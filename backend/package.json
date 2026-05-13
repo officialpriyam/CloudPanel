@@ -1,0 +1,54 @@
+{
+  "name": "@cloudpanel/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "worker": "tsx src/workers/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:push": "prisma db push",
+    "prisma:studio": "prisma studio",
+    "seed": "tsx src/seed.ts",
+    "admin:create": "tsx src/scripts/create-admin.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1045.0",
+    "@aws-sdk/s3-request-presigner": "3.1045.0",
+    "@prisma/client": "5.22.0",
+    "bcryptjs": "2.4.3",
+    "bullmq": "5.30.0",
+    "fastify": "5.8.5",
+    "ioredis": "5.4.1",
+    "jsonwebtoken": "9.0.2",
+    "nodemailer": "8.0.7",
+    "otplib": "12.0.1",
+    "pdfkit": "0.15.1",
+    "prisma": "5.22.0",
+    "stripe": "17.4.0",
+    "twilio": "5.3.6",
+    "undici": "7.25.0",
+    "ws": "8.18.0",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "2.4.6",
+    "@types/jsonwebtoken": "9.0.7",
+    "@types/node": "22.10.1",
+    "@types/nodemailer": "6.4.17",
+    "@types/pdfkit": "0.13.5",
+    "@types/ws": "8.5.13",
+    "tsx": "4.19.2",
+    "typescript": "5.6.3",
+    "vitest": "2.1.8"
+  },
+  "prisma": {
+    "seed": "tsx src/seed.ts"
+  }
+}

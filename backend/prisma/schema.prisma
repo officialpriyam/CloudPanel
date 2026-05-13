@@ -1,0 +1,634 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CLIENT
+  SUPPORT
+  ADMIN
+  OWNER
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING
+}
+
+enum VMStatus {
+  PROVISIONING
+  RUNNING
+  STOPPED
+  SUSPENDED
+  ERROR
+  DELETED
+}
+
+enum NodeStatus {
+  ACTIVE
+  MAINTENANCE
+  UNREACHABLE
+}
+
+enum TicketStatus {
+  OPEN
+  WAITING
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TransactionType {
+  TOPUP
+  HOURLY_USAGE
+  REFUND
+  ADJUSTMENT
+  TAX
+  DISCOUNT
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum GatewayProvider {
+  STRIPE
+  RAZORPAY
+  PAYPAL
+  MANUAL
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  VOID
+}
+
+enum BackupStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum FirewallAction {
+  ACCEPT
+  DROP
+  REJECT
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+enum KYCStatus {
+  NOT_SUBMITTED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+}
+
+enum DeploymentStatus {
+  QUEUED
+  BUILDING
+  DEPLOYED
+  FAILED
+  CANCELED
+}
+
+enum DeploymentProvider {
+  GIT
+  SFTP
+  MANUAL
+}
+
+model User {
+  id               String          @id @default(cuid())
+  email            String          @unique
+  passwordHash     String?
+  name             String
+  role             Role            @default(CLIENT)
+  status           UserStatus      @default(ACTIVE)
+  emailVerifiedAt  DateTime?
+  kycStatus        KYCStatus       @default(NOT_SUBMITTED)
+  credits          Int             @default(0)
+  currency         String          @default("usd")
+  totpSecret       String?
+  totpEnabled      Boolean         @default(false)
+  resourceCpuLimit Int?
+  resourceRamLimit Int?
+  resourceDiskLimit Int?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  vms              VM[]
+  tickets          Ticket[]
+  ticketMessages   TicketMessage[]
+  transactions     Transaction[]
+  creditLogs       CreditLog[]
+  apiKeys          APIKey[]
+  refreshTokens    RefreshToken[]
+  oauthAccounts    OAuthAccount[]
+  invoices         Invoice[]
+  auditLogs        AuditLog[]
+  ipAddresses      IPAddress[]
+  refunds          Refund[]
+  subscriptions     UserSubscription[]
+  kycSubmissions    KYCSubmission[]
+  deploymentProjects DeploymentProject[]
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model OAuthAccount {
+  id           String   @id @default(cuid())
+  userId       String
+  provider     String
+  providerId   String
+  accessToken  String?
+  refreshToken String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerId])
+}
+
+model APIKey {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  prefix     String
+  keyHash    String    @unique
+  scopes     String[]
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Plan {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  description  String?
+  cpuCores     Int
+  ramMb        Int
+  diskGb       Int
+  bandwidthGb  Int?
+  maxVms       Int      @default(1)
+  maxSnapshots Int      @default(2)
+  backupsEnabled Boolean @default(false)
+  pricePerHour Int
+  setupFee     Int      @default(0)
+  currency     String   @default("usd")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  vms          VM[]
+  subscriptions UserSubscription[]
+}
+
+model UserSubscription {
+  id                 String             @id @default(cuid())
+  userId             String
+  planId             String
+  status             SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart DateTime           @default(now())
+  currentPeriodEnd   DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan               Plan               @relation(fields: [planId], references: [id])
+
+  @@index([userId, status])
+}
+
+model Node {
+  id                   String     @id @default(cuid())
+  name                 String
+  cluster              String
+  host                 String
+  port                 Int        @default(8006)
+  tokenId              String
+  tokenSecretEncrypted String
+  tlsFingerprint       String?
+  status               NodeStatus @default(ACTIVE)
+  cpuUsage             Float?
+  ramUsage             Float?
+  diskUsage            Float?
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  vms                  VM[]
+  ipAddresses          IPAddress[]
+  osTemplates          OSTemplate[]
+  isoLibrary           ISOLibrary[]
+}
+
+model VM {
+  id           String      @id @default(cuid())
+  proxmoxVmId  Int?
+  userId       String
+  nodeId       String
+  planId       String
+  externalRef  String?     @unique
+  name         String
+  status       VMStatus    @default(PROVISIONING)
+  cpuCores     Int
+  ramMb        Int
+  diskGb       Int
+  bridge       String
+  hourlyPrice  Int
+  currency     String      @default("usd")
+  templateId   String?
+  lastBilledAt DateTime?
+  suspendedAt  DateTime?
+  deletedAt    DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  node         Node        @relation(fields: [nodeId], references: [id])
+  plan         Plan        @relation(fields: [planId], references: [id])
+  template     OSTemplate? @relation(fields: [templateId], references: [id])
+  primaryIp    IPAddress?  @relation("AssignedIP")
+  transactions Transaction[]
+  snapshots    Snapshot[]
+  backups      Backup[]
+  firewallRules FirewallRule[]
+  usageSamples UsageSample[]
+
+  @@unique([nodeId, proxmoxVmId])
+  @@index([userId, status])
+}
+
+model IPAddress {
+  id        String   @id @default(cuid())
+  address   String   @unique
+  cidr      Int
+  gateway   String?
+  nodeId    String?
+  userId    String?
+  assignedVmId String? @unique
+  blocked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  node      Node?    @relation(fields: [nodeId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
+  assignedVm VM?     @relation("AssignedIP", fields: [assignedVmId], references: [id])
+}
+
+model OSTemplate {
+  id        String   @id @default(cuid())
+  nodeId    String?
+  name      String
+  slug      String   @unique
+  storage   String
+  path      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  node      Node?    @relation(fields: [nodeId], references: [id])
+  vms       VM[]
+}
+
+model ISOLibrary {
+  id        String   @id @default(cuid())
+  nodeId    String?
+  name      String
+  storage   String
+  path      String
+  sizeBytes BigInt?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  node      Node?    @relation(fields: [nodeId], references: [id])
+}
+
+model Snapshot {
+  id        String   @id @default(cuid())
+  vmId      String
+  name      String
+  description String?
+  createdAt DateTime @default(now())
+  vm        VM       @relation(fields: [vmId], references: [id], onDelete: Cascade)
+}
+
+model Backup {
+  id        String       @id @default(cuid())
+  vmId      String
+  status    BackupStatus @default(QUEUED)
+  storageKey String?
+  sizeBytes BigInt?
+  createdAt DateTime     @default(now())
+  completedAt DateTime?
+  vm        VM           @relation(fields: [vmId], references: [id], onDelete: Cascade)
+}
+
+model FirewallRule {
+  id        String         @id @default(cuid())
+  vmId      String
+  action    FirewallAction
+  direction String
+  protocol  String
+  port      String?
+  source    String?
+  destination String?
+  comment   String?
+  position  Int?
+  enabled   Boolean        @default(true)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  vm        VM             @relation(fields: [vmId], references: [id], onDelete: Cascade)
+}
+
+model UsageSample {
+  id         String   @id @default(cuid())
+  vmId       String
+  cpuPercent Float
+  ramBytes   BigInt
+  diskBytes  BigInt?
+  createdAt  DateTime @default(now())
+  vm         VM       @relation(fields: [vmId], references: [id], onDelete: Cascade)
+
+  @@index([vmId, createdAt])
+}
+
+model Transaction {
+  id          String            @id @default(cuid())
+  userId      String
+  vmId        String?
+  type        TransactionType
+  status      TransactionStatus @default(SUCCEEDED)
+  amount      Int
+  currency    String            @default("usd")
+  gateway     GatewayProvider?
+  gatewayRef  String?
+  description String
+  metadata    Json?
+  createdAt   DateTime          @default(now())
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vm          VM?               @relation(fields: [vmId], references: [id])
+}
+
+model CreditLog {
+  id            String   @id @default(cuid())
+  userId        String
+  amount        Int
+  balanceBefore Int
+  balanceAfter  Int
+  reason        String
+  reference     String?
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  userId      String
+  number      String        @unique
+  status      InvoiceStatus @default(ISSUED)
+  subtotal    Int
+  tax         Int           @default(0)
+  total       Int
+  currency    String        @default("usd")
+  pdfKey      String?
+  issuedAt    DateTime      @default(now())
+  paidAt      DateTime?
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Refund {
+  id            String   @id @default(cuid())
+  userId        String
+  transactionId String
+  amount        Int
+  reason        String
+  gatewayRef    String?
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PromoCode {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  percentOff  Int?
+  amountOff   Int?
+  maxRedemptions Int?
+  redeemedCount Int     @default(0)
+  expiresAt   DateTime?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model Ticket {
+  id        String         @id @default(cuid())
+  userId    String
+  subject   String
+  status    TicketStatus   @default(OPEN)
+  priority  TicketPriority @default(NORMAL)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  TicketMessage[]
+}
+
+model TicketMessage {
+  id        String   @id @default(cuid())
+  ticketId  String
+  userId    String
+  body      String
+  internal  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model KnowledgeBaseCategory {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  articles  KnowledgeBaseArticle[]
+}
+
+model KnowledgeBaseArticle {
+  id         String                @id @default(cuid())
+  categoryId String
+  slug       String                @unique
+  title      String
+  body       String
+  active     Boolean               @default(true)
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+  category   KnowledgeBaseCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+}
+
+model KYCSubmission {
+  id             String    @id @default(cuid())
+  userId         String
+  status         KYCStatus @default(PENDING)
+  legalName      String
+  country        String
+  documentType   String
+  documentNumber String
+  documentUrl    String?
+  notes          String?
+  reviewedBy     String?
+  reviewedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+}
+
+model SftpEndpoint {
+  id                  String   @id @default(cuid())
+  name                String
+  host                String
+  port                Int      @default(22)
+  username            String
+  passwordEncrypted   String?
+  privateKeyEncrypted String?
+  rootPath            String   @default("/")
+  active              Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  deploymentProjects  DeploymentProject[]
+}
+
+model DeploymentProject {
+  id              String             @id @default(cuid())
+  userId          String
+  sftpEndpointId  String?
+  name            String
+  provider        DeploymentProvider @default(GIT)
+  repoUrl         String?
+  branch          String             @default("main")
+  buildCommand    String?
+  outputDir       String?
+  environment     Json?
+  status          DeploymentStatus   @default(QUEUED)
+  lastDeployAt    DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sftpEndpoint    SftpEndpoint?      @relation(fields: [sftpEndpointId], references: [id])
+  deployments     Deployment[]
+}
+
+model Deployment {
+  id          String           @id @default(cuid())
+  projectId   String
+  status      DeploymentStatus @default(QUEUED)
+  commitSha   String?
+  artifactUrl String?
+  log         String?
+  createdAt   DateTime         @default(now())
+  completedAt DateTime?
+  project     DeploymentProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model PaymentGateway {
+  id                     String          @id @default(cuid())
+  provider               GatewayProvider
+  name                   String
+  active                 Boolean         @default(false)
+  configEncrypted        String?
+  webhookSecretEncrypted String?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+
+  @@unique([provider, name])
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  active    Boolean  @default(true)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  target    String?
+  metadata  Json?
+  ip        String?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model WebhookEndpoint {
+  id        String   @id @default(cuid())
+  url       String
+  secretEncrypted String
+  events    String[]
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  deliveries WebhookDelivery[]
+}
+
+model WebhookDelivery {
+  id         String                @id @default(cuid())
+  endpointId String
+  event      String
+  payload    Json
+  status     WebhookDeliveryStatus @default(PENDING)
+  attempts   Int                   @default(0)
+  lastError  String?
+  createdAt  DateTime              @default(now())
+  endpoint   WebhookEndpoint       @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+}
+
+model SystemSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  subject   String
+  body      String
+  updatedAt DateTime @updatedAt
+}

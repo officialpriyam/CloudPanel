@@ -1,0 +1,11 @@
+{
+	email admin@example.com
+}
+
+cloudpanel.localhost {
+	reverse_proxy frontend:3000
+}
+
+api.cloudpanel.localhost {
+	reverse_proxy backend:4000
+}

@@ -1,0 +1,29 @@
+{
+  "name": "cloudpanel",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "dev:worker": "npm run worker -w backend",
+    "build": "npm run build -w backend && npm run build -w frontend",
+    "typecheck": "npm run typecheck -w backend && npm run typecheck -w frontend",
+    "lint": "npm run lint -w frontend && npm run lint -w backend",
+    "test": "npm run test -w backend",
+    "prisma:generate": "npm run prisma:generate -w backend",
+    "prisma:migrate": "npm run prisma:migrate -w backend"
+  },
+  "devDependencies": {
+    "concurrently": "9.1.2",
+    "typescript": "5.6.3"
+  },
+  "overrides": {
+    "postcss": "8.5.14",
+    "next@16.2.6": {
+      "postcss": "8.5.14"
+    }
+  }
+}
