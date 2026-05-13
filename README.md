@@ -41,10 +41,9 @@ The installer can install Node.js and Docker on Ubuntu/Debian.
 
 ## One-Command Install
 
-After publishing this repository to GitHub, replace `YOUR_ORG/cloudpanel` with your actual repo path:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_ORG/cloudpanel/main/install.sh | sudo bash -s -- \
+curl -fsSL https://raw.githubusercontent.com/officialpriyam/cloudpanel/main/install.sh | sudo bash -s -- \
   --repo https://github.com/YOUR_ORG/cloudpanel.git \
   --dir /opt/cloudpanel
 ```
@@ -52,7 +51,7 @@ curl -fsSL https://raw.githubusercontent.com/YOUR_ORG/cloudpanel/main/install.sh
 For a non-interactive install using generated defaults:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_ORG/cloudpanel/main/install.sh | sudo bash -s -- \
+curl -fsSL https://raw.githubusercontent.com/officialpriyam/cloudpanel/main/install.sh | sudo bash -s -- \
   --repo https://github.com/YOUR_ORG/cloudpanel.git \
   --dir /opt/cloudpanel \
   --yes
