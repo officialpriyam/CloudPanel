@@ -80,7 +80,7 @@ It then:
 ## Install From a Local Checkout
 
 ```bash
-git clone https://github.com/YOUR_ORG/cloudpanel.git
+git clone https://github.com/officialpriyam/cloudpanel.git
 cd cloudpanel
 sudo bash install.sh
 ```
