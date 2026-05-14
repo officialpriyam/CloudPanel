@@ -44,7 +44,7 @@ The installer can install Node.js and Docker on Ubuntu/Debian.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/officialpriyam/cloudpanel/main/install.sh | sudo bash -s -- \
-  --repo https://github.com/YOUR_ORG/cloudpanel.git \
+  --repo https://github.com/officialpriyam/cloudpanel.git \
   --dir /opt/cloudpanel
 ```
 
@@ -52,7 +52,7 @@ For a non-interactive install using generated defaults:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/officialpriyam/cloudpanel/main/install.sh | sudo bash -s -- \
-  --repo https://github.com/YOUR_ORG/cloudpanel.git \
+  --repo https://github.com/officialpriyam/cloudpanel.git \
   --dir /opt/cloudpanel \
   --yes
 ```
